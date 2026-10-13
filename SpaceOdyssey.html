@@ -36,7 +36,7 @@ const clock = new THREE.Clock();
 const waveSpeed = 0.5;
 const waveFrequency = 0.1;
 const waveAmplitude = 2.0;
-
+var driftType = 0;
 const browserHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) * camera.position.z;
 const browserWidth = browserHeight * camera.aspect;
 const browserLeftEdge = -browserWidth / 2;
@@ -53,6 +53,7 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     asteroidMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
     asteroidMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
+    asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
     scene.add(asteroidMeshes[i]);
     animateAsteroids();
 }, undefined, function (err) {
@@ -74,6 +75,7 @@ function animateAsteroids() {
     const baseScale = 1.0;
     const growShrinkVariance = 0.5;
         for(let i = 0; i < asteroidMeshes.length; i++){
+            driftType = i % 4;
             const timeSinceStart = clock.getElapsedTime();
             if(asteroidMeshes[i]){
                 const asteroidMovementAlgo = Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency ) * waveAmplitude; //Controls the movement of the asteroids
@@ -84,17 +86,37 @@ function animateAsteroids() {
         asteroidMeshes[i].rotation.y += 0.01;
        asteroidMeshes[i].position.x += 0.05;
 
-asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency) * waveAmplitude;
+       var x = asteroidMeshes[i].position.x;
         
+         switch(driftType){
+            case 0: //3 of 10 asteroids will drift according to some sinusoidal function
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + x * waveFrequency) * waveAmplitude;
+                break;
+            case 1: //3 of 10 asteroids will drift along some linear function
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (timeSinceStart * 2) - 100;
+                break;
+            case 2: //2 of 10 asteroids will drift along some parabolic function
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (0.001 * x * x) - 50;
+                break;
+            case 3: //2 of 10 asteroids will drift along some irregular function (cubic plus logarithmic)
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (0.001 * Math.pow(x, 3)) + (0.5 * Math.log(Math.abs(x))) - 200;
+                break;
+            default: //If any additional asteroids, they will drift along some cosinusoidal function 
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.cos(timeSinceStart * waveSpeed + x * waveFrequency) * waveAmplitude; 
+         }
     if(i % 2 == 0){
         asteroidMeshes[i].scale.set(baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance));
     }else{
         asteroidMeshes[i].scale.set(baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance));
     }
 
-        if(asteroidMeshes[i].position.x >= browserRightEdge + 5){
+        if(asteroidMeshes[i].position.x >= browserRightEdge + 5 || (asteroidMeshes[i].position.x >= browserRightEdge + 5 && asteroidMeshes[i].position.y >= browserHeight + 5)){
             asteroidMeshes[i].position.x = browserLeftEdge - 5;
-            asteroidMeshes[i].position.y = (Math.random() * browserHeight) -10;
+
+            asteroidMeshes[i].position.y = Math.random() * (browserHeight - (browserHeight / 2));
+
+            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
+            asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
         }
     }
         }
