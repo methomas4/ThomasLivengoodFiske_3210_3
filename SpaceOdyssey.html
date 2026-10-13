@@ -71,11 +71,56 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
+const newCube = new Float32Array([
+        5, 5, 5, //Top point one (bottom left on top side)
+        5, 5, -5, //Top point two (top left on top side)
+        -5, 5, 5, //Top point three (bottom right on top side)
+        -5, 5, -5,//Top point four (top right on top side)
+        5, -5, -5,//Bottom point one (top left on bottom side)
+        5, -5, 5,//Bottom point two (bottom left on bottom side)
+        -5, -5, 5,//Bottom point three (bottom right on bottom side)
+        -5, -5, -5 //Bottom point four (top right on bottom side)
+        ]);
+
+        const indices = [
+            // Top face
+            0, 1, 2,   2, 1, 3,
+            // Bottom face
+            4, 5, 7,   7, 5, 6,
+            // Front face
+            5, 0, 6,   6, 0, 2,
+            // Back face
+            1, 4, 3,   3, 4, 7,
+            // Right face (Positive X)
+            0, 5, 1,   1, 5, 4,
+            // Left face (Negative X)
+            6, 2, 7,   7, 2, 3
+        ];
+
+        const cubeGeometry = new THREE.BufferGeometry();
+        cubeGeometry.setIndex(indices);
+        cubeGeometry.setAttribute('position', new THREE.BufferAttribute(newCube, 3));
+
+        const cubeMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff0000,
+            wireframe: false,
+            side: THREE.DoubleSide
+        });
+
+        const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeMesh.position.y = 0;
+        cubeMesh.position. x = 0;
+        scene.add(cubeMesh);
+
 function animateAsteroids() {
     const baseScale = 1.0;
     const growShrinkVariance = 0.5;
+    cubeMesh.rotation.x +=0.01;
+    cubeMesh.rotation.y +=0.01;
         for(let i = 0; i < asteroidMeshes.length; i++){
             driftType = i % 4;
+            const shipHitbox = new THREE.Box3().setFromObject(cubeMesh);
+            const asteroidHitbox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
             const timeSinceStart = clock.getElapsedTime();
             if(asteroidMeshes[i]){
                 const asteroidMovementAlgo = Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency ) * waveAmplitude; //Controls the movement of the asteroids
@@ -86,6 +131,10 @@ function animateAsteroids() {
         asteroidMeshes[i].rotation.y += 0.01;
        asteroidMeshes[i].position.x += 0.05;
 
+       //Logic for if the ship is hit from the front, back, top, or bottom
+       if (shipHitbox.intersectsBox(asteroidHitbox)){
+        console.log("Collision Detected");
+       }
        var x = asteroidMeshes[i].position.x;
         
          switch(driftType){
