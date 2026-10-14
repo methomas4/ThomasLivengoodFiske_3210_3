@@ -112,11 +112,32 @@ const newCube = new Float32Array([
         cubeMesh.position. x = 0;
         scene.add(cubeMesh);
 
+        const collisionAnimation = new THREE.AnimationMixer(cubeMesh);
+        function handleShipCollision(hitBoxA, hitBoxB){
+            if (hitBoxA.intersectsBox(hitBoxB)){
+                console.log("Collision Detected");
+
+            const collsionDurations = [0,0.1,0.1,0.4];
+            const collisionMovements = [cubeMesh.position.y, cubeMesh.position.y + 10, cubeMesh.position.y - 10, cubeMesh.position.y];
+
+            const collisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, collisionMovements);
+            const collisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [collisionTrack]);
+
+            const asteroidCollision = collisionAnimation.clipAction(collisionClip);
+            
+            if(!asteroidCollision.isRunning()){
+            asteroidCollision.reset(); //Don't want 2 copies running
+            asteroidCollision.setLoop(THREE.LoopOnce, 1);
+            asteroidCollision.clampWhenFinished = true;
+            asteroidCollision.play();
+            }
+            }
+        }
+
 function animateAsteroids() {
+    const deltaTime = clock.getDelta();
     const baseScale = 1.0;
     const growShrinkVariance = 0.5;
-    cubeMesh.rotation.x +=0.01;
-    cubeMesh.rotation.y +=0.01;
         for(let i = 0; i < asteroidMeshes.length; i++){
             driftType = i % 4;
             const shipHitbox = new THREE.Box3().setFromObject(cubeMesh);
@@ -132,9 +153,7 @@ function animateAsteroids() {
        asteroidMeshes[i].position.x += 0.05;
 
        //Logic for if the ship is hit from the front, back, top, or bottom
-       if (shipHitbox.intersectsBox(asteroidHitbox)){
-        console.log("Collision Detected");
-       }
+        handleShipCollision(shipHitbox, asteroidHitbox);
        var x = asteroidMeshes[i].position.x;
         
          switch(driftType){
@@ -168,12 +187,17 @@ function animateAsteroids() {
             asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
         }
     }
-        }
+}
     
+    if (collisionAnimation) {
+        collisionAnimation.update(deltaTime);
+    }
+
     renderer.render(scene, camera);
 
     requestAnimationFrame(animateAsteroids);
 }
+
     </script>
 </body>
 </html>
