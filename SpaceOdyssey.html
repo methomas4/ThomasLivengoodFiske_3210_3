@@ -30,7 +30,7 @@ spaceTexture.colorSpace = THREE.SRGBColorSpace;
 scene.background = spaceTexture;
 
 const asteroidMeshes = [];
-const numOfAsteroids = 10; //controls the number of asteroids rendered
+const numOfAsteroids = 20; //controls the number of asteroids rendered
 
 const clock = new THREE.Clock();
 const waveSpeed = 0.5;
@@ -156,19 +156,19 @@ function animateAsteroids() {
 
        //Logic for if the ship is hit from the front, back, top, or bottom
         handleShipCollision(shipHitbox, asteroidHitbox);
-       var x = asteroidMeshes[i].position.x;
+       var x = asteroidMeshes[i].position.z;
         
          switch(driftType){
-            case 0: //3 of 10 asteroids will drift according to some sinusoidal function
+            case 0: //5 of 20 asteroids will drift according to some sinusoidal function
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + x * waveFrequency) * waveAmplitude;
                 break;
-            case 1: //3 of 10 asteroids will drift along some linear function
+            case 1: //5 of 20 asteroids will drift along some linear function
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (timeSinceStart * 2) - 100;
                 break;
-            case 2: //2 of 10 asteroids will drift along some parabolic function
+            case 2: //5 of 20 asteroids will drift along some parabolic function
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (0.001 * x * x) - 50;
                 break;
-            case 3: //2 of 10 asteroids will drift along some irregular function (cubic plus logarithmic)
+            case 3: //5 of 20 asteroids will drift along some irregular function (cubic plus logarithmic)
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (0.001 * Math.pow(x, 3)) + (0.5 * Math.log(Math.abs(x))) - 200;
                 break;
             default: //If any additional asteroids, they will drift along some cosinusoidal function 
