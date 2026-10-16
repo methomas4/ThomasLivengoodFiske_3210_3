@@ -33,9 +33,9 @@ const asteroidMeshes = [];
 const numOfAsteroids = 20; //controls the number of asteroids rendered
 
 const clock = new THREE.Clock();
-const waveSpeed = 0.5;
-const waveFrequency = 0.1;
-const waveAmplitude = 2.0;
+const waveSpeed = 0.2 + (Math.random() * 0.05);
+const waveFrequency = 0.1 + Math.random();
+const waveAmplitude = 2.0 + Math.random();
 var driftType = 0;
 const browserHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov/2)) * camera.position.z;
 const browserWidth = browserHeight * camera.aspect;
@@ -43,7 +43,7 @@ const browserLeftEdge = -browserWidth / 2;
 const browserRightEdge = browserWidth /2;
 
 function createAsteroids(){
-var textureLoader = new THREE . TextureLoader () ;
+var textureLoader = new THREE.TextureLoader();
 
 for(let i = 0; i < numOfAsteroids; i++){
 const asteroidGeometry = new THREE.SphereGeometry(5, 9, 9);
@@ -52,7 +52,7 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     asteroidMeshes.push(new THREE.Mesh(asteroidGeometry, material));
     asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
     asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-    asteroidMeshes[i].position.z = (Math.random() -0.5) * 400;
+    asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
     asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
     asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
@@ -104,42 +104,65 @@ const newCube = new Float32Array([
         cubeGeometry.setAttribute('position', new THREE.BufferAttribute(newCube, 3));
 
         const cubeMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
+            color: 0xffffff,
             wireframe: false,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.5
         });
 
-        const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
-        cubeMesh.position.y = 0;
-        cubeMesh.position. x = 0;
-        // scene.add(cubeMesh);
+        
 
-        const collisionAnimation = new THREE.AnimationMixer(cubeMesh);
+        const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeMesh.position.set(0,0,299); //Move to camera
+        cubeMesh.scale.set(4,4,4); //Scale by 4. How big is the ship
+        cubeMesh.position.set(0,0,300);// Move back to camera
+        scene.add(cubeMesh);
+
+        const collisionWindowAnimation = new THREE.AnimationMixer(cubeMesh);
+        const collisionCameraAnimation = new THREE.AnimationMixer(camera);
+
         function handleShipCollision(hitBoxA, hitBoxB){
             if (hitBoxA.intersectsBox(hitBoxB)){
                 console.log("Collision Detected");
 
-            const collsionDurations = [0,0.1,0.1,0.4];
-            const collisionMovements = [cubeMesh.position.y, cubeMesh.position.y + 10, cubeMesh.position.y - 10, cubeMesh.position.y];
+            const collsionDurations = [0,0.1,0.3,0.4];
+            const windowCollisionMovements = [cubeMesh.position.y, cubeMesh.position.y + 30, cubeMesh.position.y - 30, cubeMesh.position.y];
+            const cameraCollisionMovements = [camera.position.y, camera.position.y + 30, camera.position.y - 30, camera.position.y];
 
-            const collisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, collisionMovements);
-            const collisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [collisionTrack]);
+            const windowCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, windowCollisionMovements);
+            const cameraCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, cameraCollisionMovements);
 
-            const asteroidCollision = collisionAnimation.clipAction(collisionClip);
+            const windowCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [windowCollisionTrack]);
+            const cameraCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [cameraCollisionTrack]);
+
+            const asteroidWindowCollision = collisionWindowAnimation.clipAction(windowCollisionClip);
+            const asteroidCameraCollision = collisionCameraAnimation.clipAction(cameraCollisionClip);
             
-            if(!asteroidCollision.isRunning()){
-            asteroidCollision.reset(); //Don't want 2 copies running
-            asteroidCollision.setLoop(THREE.LoopOnce, 1);
-            asteroidCollision.clampWhenFinished = true;
-            asteroidCollision.play();
+            if(!asteroidWindowCollision.isRunning() && !asteroidCameraCollision.isRunning()){
+                console.log("starting shake");
+            asteroidWindowCollision.reset(); //Don't want 2 copies running
+            asteroidCameraCollision.reset(); //Don't want 2 copies running
+
+            asteroidWindowCollision.setLoop(THREE.LoopOnce, 1);
+            asteroidCameraCollision.setLoop(THREE.LoopOnce, 1);
+
+            asteroidWindowCollision.clampWhenFinished = true;
+            asteroidCameraCollision.clampWhenFinished = true;
+
+            asteroidWindowCollision.play();
+            asteroidCameraCollision.play();
             }
+            return true;
             }
+            return false;
         }
 
 function animateAsteroids() {
     const deltaTime = clock.getDelta();
     const baseScale = 1.0;
     const growShrinkVariance = 0.5;
+    const removedAsteroids = [];
         for(let i = 0; i < asteroidMeshes.length; i++){
             driftType = i % 4;
             const shipHitbox = new THREE.Box3().setFromObject(cubeMesh);
@@ -155,7 +178,11 @@ function animateAsteroids() {
        asteroidMeshes[i].position.z += 0.05;
 
        //Logic for if the ship is hit from the front, back, top, or bottom
-        handleShipCollision(shipHitbox, asteroidHitbox);
+        if(handleShipCollision(shipHitbox, asteroidHitbox)){
+            asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+            asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
+            asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
+        }
        var x = asteroidMeshes[i].position.z;
         
          switch(driftType){
@@ -183,7 +210,7 @@ function animateAsteroids() {
         if(asteroidMeshes[i].position.z >= 600){
             asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
             asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-            asteroidMeshes[i].position.z = (Math.random() -0.5) * 400;
+            asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
 
             asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
             asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
@@ -193,8 +220,9 @@ function animateAsteroids() {
     }
 }
     
-    if (collisionAnimation) {
-        collisionAnimation.update(deltaTime);
+    if (collisionWindowAnimation && collisionCameraAnimation) {
+        collisionWindowAnimation.update(deltaTime);
+        collisionCameraAnimation.update(deltaTime);
     }
 
     renderer.render(scene, camera);
