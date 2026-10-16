@@ -20,7 +20,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1, 
   1000
 );
-camera.position.set(0, 0, 300); // Position the camera along the +Z axis
+camera.position.set(0, 0, 300); 
 camera.lookAt(new THREE.Vector3(0, 0, 0));
 scene.add(camera);
 
@@ -50,10 +50,12 @@ const asteroidGeometry = new THREE.SphereGeometry(5, 9, 9);
 textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     var material = new THREE.MeshBasicMaterial({ map: texture });
     asteroidMeshes.push(new THREE.Mesh(asteroidGeometry, material));
-    asteroidMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
-    asteroidMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
+    asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+    asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
+    asteroidMeshes[i].position.z = (Math.random() -0.5) * 400;
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
     asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+    asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
     scene.add(asteroidMeshes[i]);
     animateAsteroids();
 }, undefined, function (err) {
@@ -110,7 +112,7 @@ const newCube = new Float32Array([
         const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
         cubeMesh.position.y = 0;
         cubeMesh.position. x = 0;
-        scene.add(cubeMesh);
+        // scene.add(cubeMesh);
 
         const collisionAnimation = new THREE.AnimationMixer(cubeMesh);
         function handleShipCollision(hitBoxA, hitBoxB){
@@ -150,7 +152,7 @@ function animateAsteroids() {
 
         asteroidMeshes[i].rotation.x += 0.01;
         asteroidMeshes[i].rotation.y += 0.01;
-       asteroidMeshes[i].position.x += 0.05;
+       asteroidMeshes[i].position.z += 0.05;
 
        //Logic for if the ship is hit from the front, back, top, or bottom
         handleShipCollision(shipHitbox, asteroidHitbox);
@@ -178,13 +180,15 @@ function animateAsteroids() {
         asteroidMeshes[i].scale.set(baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance));
     }
 
-        if(asteroidMeshes[i].position.x >= browserRightEdge + 5 || (asteroidMeshes[i].position.x >= browserRightEdge + 5 && asteroidMeshes[i].position.y >= browserHeight + 5)){
-            asteroidMeshes[i].position.x = browserLeftEdge - 5;
-
-            asteroidMeshes[i].position.y = Math.random() * (browserHeight - (browserHeight / 2));
+        if(asteroidMeshes[i].position.z >= 600){
+            asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+            asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
+            asteroidMeshes[i].position.z = (Math.random() -0.5) * 400;
 
             asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
             asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+            asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+
         }
     }
 }
