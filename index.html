@@ -36,6 +36,7 @@ const clock = new THREE.Clock();
 var driftType = 0;
 var baseScale = 0;
 var growShrinkVariance = 0;
+var scaleSpeed = 0;
 var waveSpeed = 0;
 var waveFrequency = 0;
 var waveAmplitude = 0;
@@ -56,18 +57,21 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
     asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
 
-    asteroidMeshes[i].userData.growShrinkVariance = 0.1 + (0.01 * Math.random());
-    asteroidMeshes[i].userData.baseScale = 0.5 * Math.random();
-
-    asteroidMeshes[i].userData.waveSpeed = 0.5 - (0.1 * Math.random());
-    asteroidMeshes[i].userData.waveAmplitude = 0.1 * Math.random();
-    asteroidMeshes[i].userData.waveFrequency = 2.0 * Math.random();
-
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
     asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
     asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+    asteroidMeshes[i].userData.driftType = i % 4;
+asteroidMeshes[i].userData.driftSpeed = 0.2 + Math.random() * 0.3;
+asteroidMeshes[i].userData.curveAmt = Math.random() * 0.0001;
+
+asteroidMeshes[i].userData.growShrinkVariance = 0.1 + (0.01 * Math.random());
+asteroidMeshes[i].userData.baseScale = 0.5 * Math.random();
+asteroidMeshes[i].userData.scaleSpeed = 2.0 + Math.random();
+
+asteroidMeshes[i].userData.waveSpeed = 0.2 + Math.random() * 0.2;
+asteroidMeshes[i].userData.waveAmplitude = 5 + Math.random() * 10;
+asteroidMeshes[i].userData.waveFrequency = 0.01 + Math.random() * 0.02;
     scene.add(asteroidMeshes[i]);
-    animateAsteroids();
 }, undefined, function (err) {
     console.error("texture not loaded", err);
 });
@@ -133,12 +137,15 @@ const newCube = new Float32Array([
         const collisionCameraAnimation = new THREE.AnimationMixer(camera);
 
         function handleShipCollision(hitBoxA, hitBoxB){
+            const originalCubeY = cubeMesh.position.y;
+            const originalCameraY = camera.position.y;
+
             if (hitBoxA.intersectsBox(hitBoxB)){
                 console.log("Collision Detected");
 
             const collsionDurations = [0,0.1,0.3,0.4];
-            const windowCollisionMovements = [cubeMesh.position.y, cubeMesh.position.y + 30, cubeMesh.position.y - 30, cubeMesh.position.y];
-            const cameraCollisionMovements = [camera.position.y, camera.position.y + 30, camera.position.y - 30, camera.position.y];
+            const windowCollisionMovements = [originalCubeY, originalCubeY + 100, originalCubeY - 100, originalCubeY];
+            const cameraCollisionMovements = [originalCameraY, originalCameraY + 100, originalCameraY - 100, originalCameraY];
 
             const windowCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, windowCollisionMovements);
             const cameraCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, cameraCollisionMovements);
@@ -175,46 +182,46 @@ function animateAsteroids() {
     var curveAmt = 0;
     var scaleFactor = 0;
         for(let i = 0; i < asteroidMeshes.length; i++){
-            //Use user data to assign each asteroid a different attribute
-            asteroidMeshes[i].userData.driftType = i % 4;
-            asteroidMeshes[i].userData.driftSpeed = 2 * Math.random();
-            asteroidMeshes[i].userData.curveAmt = Math.random() * 0.001;
-            
-            const shipHitbox = new THREE.Box3().setFromObject(cubeMesh);
-            const asteroidHitbox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
             const timeSinceStart = clock.getElapsedTime();
             if(asteroidMeshes[i]){
                 const asteroidMovementAlgo = Math.sin(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + asteroidMeshes[i].position.x * asteroidMeshes[i].userData.waveFrequency ) * asteroidMeshes[i].userData.waveAmplitude; //Controls the movement of the asteroids
-                const currSinVal = Math.sin(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + asteroidMeshes[i].position.x * asteroidMeshes[i].userData.waveFrequency);
-                const currCosineVal = Math.cos(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + asteroidMeshes[i].position.x * asteroidMeshes[i].userData.waveFrequency);
-
+                const currSinVal = Math.sin(timeSinceStart * asteroidMeshes[i].userData.scaleSpeed);
+                // const currCosineVal = Math.cos(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + asteroidMeshes[i].position.x * asteroidMeshes[i].userData.waveFrequency);
+        
         asteroidMeshes[i].rotation.x += 0.01;
         asteroidMeshes[i].rotation.y += 0.01;
-       asteroidMeshes[i].position.z += 0.05;
-       scaleFactor = 1 + currSinVal * asteroidMeshes[i].userData.growShrinkVariance;
-       asteroidMeshes[i].scale.setScalar(asteroidMeshes[i].userData.baseScale * scaleFactor);
+       asteroidMeshes[i].position.z += 0.5 + (3 * deltaTime);
+       scaleFactor = 5 + currSinVal * asteroidMeshes[i].userData.growShrinkVariance;
+       asteroidMeshes[i].scale.setScalar((asteroidMeshes[i].userData.baseScale * scaleFactor));
 
+       const shipHitbox = new THREE.Box3().setFromObject(cubeMesh);
+       const asteroidHitbox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
 
        //Logic for if the ship is hit from the front, back, top, or bottom
-        if(handleShipCollision(shipHitbox, asteroidHitbox)){
+        if(!asteroidMeshes[i].userData.hasCollided && handleShipCollision(shipHitbox, asteroidHitbox)){
             asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
             asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-            asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
+            asteroidMeshes[i].position.z = -500;
+
+            asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
+            asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+            asteroidMeshes[i].userData.hasCollided = true;
         }
        var x = asteroidMeshes[i].position.z;
         
-         switch(driftType){
+         switch(asteroidMeshes[i].userData.driftType){
             case 0: //5 of 20 asteroids will drift according to some sinusoidal function
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + x * asteroidMeshes[i].userData.waveFrequency) * asteroidMeshes[i].userData.waveAmplitude;
                 break;
             case 1: //5 of 20 asteroids will drift along some linear function
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (timeSinceStart * (Math.random() + 2)) - 100;
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (timeSinceStart * asteroidMeshes[i].userData.driftSpeed) - 100;
                 break;
             case 2: //5 of 20 asteroids will drift along some parabolic function
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (asteroidMeshes[i].userData.curveAmt * x * x) - 50;
                 break;
             case 3: //5 of 20 asteroids will drift along some irregular function (cubic plus logarithmic)
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + ((Math.random() * 0.001) * Math.pow(x, 3)) + (0.5 * Math.log(Math.abs(x))) - 200;
+            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (asteroidMeshes[i].userData.curveAmt * Math.pow(x, 3)) + (0.5 * Math.log(Math.abs(x))) - 200;
                 break;
             default: //If any additional asteroids, they will drift along some cosinusoidal function 
             asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.cos(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + x * asteroidMeshes[i].userData.waveFrequency) * asteroidMeshes[i].userData.waveAmplitude; 
@@ -226,14 +233,14 @@ function animateAsteroids() {
     // }
 
         if(asteroidMeshes[i].position.z >= 600){
-            asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
-            asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-            asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
+            asteroidMeshes[i].position.x = (Math.random() - 0.5) * 100;
+            asteroidMeshes[i].position.y = (Math.random() - 0.5) * 60;
+            asteroidMeshes[i].position.z = -500;
 
-            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
             asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
             asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
-
+            asteroidMeshes[i].userData.hasCollided = false;
         }
     }
 }
@@ -244,10 +251,9 @@ function animateAsteroids() {
     }
 
     renderer.render(scene, camera);
-
     requestAnimationFrame(animateAsteroids);
 }
-
+animateAsteroids();
     </script>
 </body>
 </html>
