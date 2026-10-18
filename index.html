@@ -215,33 +215,31 @@ document.addEventListener("mousemove", function(event) {
 
 
 function createAsteroids(){
-var textureLoader = new THREE . TextureLoader () ;
+var textureLoader = new THREE.TextureLoader();
 
 for(let i = 0; i < numOfAsteroids; i++){
-
-    
 const asteroidGeometry = new THREE.SphereGeometry(5, 9, 9);
 textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
-    const asteroidMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: Math.random() * 1000 },
-            uScale: { value: 4.0 },
-            uTexture: { value: texture }
-            // I used this stackoverflow page to learn how to put a texture into a shaderMaterial: https://stackoverflow.com/questions/45442535/three-js-shadermaterial-add-texture-to-particles
+    var material = new THREE.MeshBasicMaterial({ map: texture });
+    asteroidMeshes.push(new THREE.Mesh(asteroidGeometry, material));
+    asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+    asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
+    asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
 
-        },
-        vertexShader: vertexShader,
-        fragmentShader: asteroidFragmentShader,
-        side: THREE.DoubleSide
-    });
-    const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
-    asteroidMeshes.push(asteroid);
-    const asteroidScale = 1.0 + (Math.random() * 2 - 1) * 0.8;
-    asteroidMeshes[i].scale.setScalar(asteroidScale);
-    asteroidMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
-    asteroidMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
-    asteroidMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
+    asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+    asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+    asteroidMeshes[i].userData.driftType = i % 4;
+asteroidMeshes[i].userData.driftSpeed = 0.2 + Math.random() * 0.3;
+asteroidMeshes[i].userData.curveAmt = Math.random() * 0.0001;
+
+asteroidMeshes[i].userData.growShrinkVariance = 0.1 + (0.01 * Math.random());
+asteroidMeshes[i].userData.baseScale = 0.5 * Math.random();
+asteroidMeshes[i].userData.scaleSpeed = 2.0 + Math.random();
+
+asteroidMeshes[i].userData.waveSpeed = 0.2 + Math.random() * 0.2;
+asteroidMeshes[i].userData.waveAmplitude = 5 + Math.random() * 10;
+asteroidMeshes[i].userData.waveFrequency = 0.01 + Math.random() * 0.02;
     scene.add(asteroidMeshes[i]);
 }, undefined, function (err) {
     console.error("texture not loaded", err);
