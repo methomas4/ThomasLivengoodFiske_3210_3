@@ -13,9 +13,7 @@
 // 1. Initialize the Scene
 const scene = new THREE.Scene();
 
-
-// 2. Configure the Camera (Perspective Projection)
-// Arguments: Field of View (deg), Aspect Ratio, Near Clipping Plane, Far Clipping Plane
+//Camera Projections
 const camera = new THREE.PerspectiveCamera(
   35, 
   window.innerWidth / window.innerHeight, 
@@ -25,6 +23,16 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 0, 300); // Position the camera along the +Z axis
 camera.lookAt(new THREE.Vector3(0, 0, 0)); //x,y,z
 scene.add(camera);
+
+const rearViewCamera = new THREE.PerspectiveCamera(
+  35, 
+  window.innerWidth / window.innerHeight, 
+  0.1, 
+  1000
+);
+rearViewCamera.position.set(0, 0, -300); // Position the rear view camera along the -Z axis
+rearViewCamera.lookAt(new THREE.Vector3(0, 0, 0)); //x,y,z
+scene.add(rearViewCamera);
 
 const backgroundLoader = new THREE.TextureLoader();
 const spaceTexture = backgroundLoader.load('HuGGeENt6kGyixe3hT9tnY.jpg');
@@ -291,10 +299,38 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(0x111111, 1.0); // Dark grey background
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setViewport(0,0,window.innerWidth,window.innerHeight);
+renderer.setScissor(0,0,window.innerWidth,window.innerHeight);
 document.body.appendChild(renderer.domElement);
 renderer.domElement.addEventListener("click", function() {
     renderer.domElement.requestPointerLock();
 });
+renderer.render(scene, camera);
+
+
+function renderViews() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const viewSize = 250;
+    const margin = 20;
+
+    renderer.setScissorTest(true);
+
+    // Main camera: full-screen view
+    renderer.setViewport(0, 0, width, height);
+    renderer.setScissor(0, 0, width, height);
+    renderer.render(scene, camera);
+
+    // Secondary camera: top-right corner
+    const x = width - viewSize - margin;
+    const y = height - viewSize - margin;
+
+    renderer.setViewport(x, y, viewSize, viewSize);
+    renderer.setScissor(x, y, viewSize, viewSize);
+    renderer.render(scene, rearViewCamera);
+
+    renderer.setScissorTest(false);
+}
 
 function animateAsteroids() {
     
@@ -313,9 +349,6 @@ asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(time
         }
     }
         }
-    
-    renderer.render(scene, camera);
-
     requestAnimationFrame(animateAsteroids);
 }
 
@@ -347,12 +380,6 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
         }
     }
         }
-    
-        
-
-    renderer.render(scene, camera);
-
-
     requestAnimationFrame(animateStars);
 }
 
@@ -365,13 +392,13 @@ function animateSpaceship() {
             if (speedUp === true) {
                 speed += 0.03;
             } else {
-                speed += 0.01;
+                speed += 0.001;
             }
         }
     }
     if(sPressed === true) {
         if(speed > -0.1) { //maximum backward speed
-            speed -= 0.01;
+            speed -= 0.001;
         }
     }
     if(speed < 0.0 && sPressed === false) {
@@ -383,7 +410,11 @@ function animateSpaceship() {
     ship.rotation.copy(camera.rotation);
     ship.rotateY(THREE.MathUtils.degToRad(-90));
     ship.position.addScaledVector(direction, speed);
-    camera.position.copy(ship.position).add(new THREE.Vector3(0, 0, 50));
+    camera.position.copy(ship.position);
+    rearViewCamera.position.copy(camera.position);
+    rearViewCamera.rotation.copy(camera.rotation);
+    rearViewCamera.rotateY(Math.PI);
+    renderViews();
 }
 animateSpaceship();
     </script>
