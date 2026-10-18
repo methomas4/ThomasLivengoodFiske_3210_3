@@ -360,6 +360,94 @@ asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(time
     requestAnimationFrame(animateAsteroids);
 }
 
+const newCube = new Float32Array([
+        5, 5, 5, //Top point one (bottom left on top side)
+        5, 5, -5, //Top point two (top left on top side)
+        -5, 5, 5, //Top point three (bottom right on top side)
+        -5, 5, -5,//Top point four (top right on top side)
+        5, -5, -5,//Bottom point one (top left on bottom side)
+        5, -5, 5,//Bottom point two (bottom left on bottom side)
+        -5, -5, 5,//Bottom point three (bottom right on bottom side)
+        -5, -5, -5 //Bottom point four (top right on bottom side)
+        ]);
+
+        const indices = [
+            // Top face
+            0, 1, 2,   2, 1, 3,
+            // Bottom face
+            4, 5, 7,   7, 5, 6,
+            // Front face
+            5, 0, 6,   6, 0, 2,
+            // Back face
+            1, 4, 3,   3, 4, 7,
+            // Right face (Positive X)
+            0, 5, 1,   1, 5, 4,
+            // Left face (Negative X)
+            6, 2, 7,   7, 2, 3
+        ];
+
+        const cubeGeometry = new THREE.BufferGeometry();
+        cubeGeometry.setIndex(indices);
+        cubeGeometry.setAttribute('position', new THREE.BufferAttribute(newCube, 3));
+
+        const cubeMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            wireframe: false,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.1
+        });
+
+        
+
+        const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeMesh.position.set(0,0,299); //Move to camera
+        cubeMesh.scale.set(4,4,4); //Scale by 4. How big is the ship
+        cubeMesh.position.set(0,0,300);// Move back to camera
+        scene.add(cubeMesh);
+
+        const collisionWindowAnimation = new THREE.AnimationMixer(cubeMesh);
+        const collisionCameraAnimation = new THREE.AnimationMixer(camera);
+
+        function handleShipCollision(hitBoxA, hitBoxB){
+            const originalCubeY = cubeMesh.position.y;
+            const originalCameraY = camera.position.y;
+
+            if (hitBoxA.intersectsBox(hitBoxB)){
+                console.log("Collision Detected");
+
+            const collsionDurations = [0,0.1,0.3,0.4];
+            const windowCollisionMovements = [originalCubeY, originalCubeY + 100, originalCubeY - 100, originalCubeY];
+            const cameraCollisionMovements = [originalCameraY, originalCameraY + 100, originalCameraY - 100, originalCameraY];
+
+            const windowCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, windowCollisionMovements);
+            const cameraCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, cameraCollisionMovements);
+
+            const windowCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [windowCollisionTrack]);
+            const cameraCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [cameraCollisionTrack]);
+
+            const asteroidWindowCollision = collisionWindowAnimation.clipAction(windowCollisionClip);
+            const asteroidCameraCollision = collisionCameraAnimation.clipAction(cameraCollisionClip);
+            
+            if(!asteroidWindowCollision.isRunning() && !asteroidCameraCollision.isRunning()){
+                console.log("starting shake");
+            asteroidWindowCollision.reset(); //Don't want 2 copies running
+            asteroidCameraCollision.reset(); //Don't want 2 copies running
+
+            asteroidWindowCollision.setLoop(THREE.LoopOnce, 1);
+            asteroidCameraCollision.setLoop(THREE.LoopOnce, 1);
+
+            asteroidWindowCollision.clampWhenFinished = true;
+            asteroidCameraCollision.clampWhenFinished = true;
+
+            asteroidWindowCollision.play();
+            asteroidCameraCollision.play();
+            }
+            return true;
+            }
+            return false;
+        }
+
 function animateStars() {
     const baseScale = 1.0;
     const growShrinkVariance = 0.25;
