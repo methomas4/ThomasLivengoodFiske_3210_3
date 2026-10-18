@@ -112,18 +112,25 @@ void main() {
     gl_FragColor = texture2D(uTexture, vUv);
 }
 `;
+const listener = new THREE.AudioListener();
+camera.add(listener);
+const collision = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('collision.mp3', function(buffer) {
+    collision.setBuffer(buffer);
+});
 
 let ship = null;
+const shipBox = new THREE.Box3();
 const loader = new THREE.GLTFLoader();
 loader.load(
     'sci-fi_personal_space_pod_shipweekly_challenge/scene.gltf',
     function (gltf) {
         ship = gltf.scene;
 
-        // Calculate the model's original dimensions
-        const box = new THREE.Box3().setFromObject(ship);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
+        shipBox.setFromObject(ship);
+        const size = shipBox.getSize(new THREE.Vector3());
+        const center = shipBox.getCenter(new THREE.Vector3());
         ship.rotation.y = THREE.MathUtils.degToRad(-90);
 
         console.log("Original ship size:", size);
@@ -155,8 +162,7 @@ loader.load(
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
-
-
+//speed
 let speed = 0.0;
 let speedUp = false;
 let direction = new THREE.Vector3(0, 0, 0);
@@ -235,8 +241,8 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     asteroidMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
     asteroidMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
+    asteroidMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
     scene.add(asteroidMeshes[i]);
-    animateAsteroids()
 }, undefined, function (err) {
     console.error("texture not loaded", err);
 });
@@ -282,17 +288,14 @@ const starAuraMaterial = new THREE.ShaderMaterial({
     starMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
     starMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
     starMeshes[i].userData.startY = starMeshes[i].position.y;
+    starMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(starMeshes[i]);
     scene.add(starMeshes[i]);
-    animateStars();
+
 }, undefined, function (err) {
     console.error("texture not loaded", err);
 });
 }
 }
-
-
-createAsteroids();
-createStars();
 
 // 4. Initialize the WebGL Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -307,7 +310,6 @@ renderer.domElement.addEventListener("click", function() {
 });
 renderer.render(scene, camera);
 
-
 function renderViews() {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -316,12 +318,12 @@ function renderViews() {
 
     renderer.setScissorTest(true);
 
-    // Main camera: full-screen view
+    //Main camera
     renderer.setViewport(0, 0, width, height);
     renderer.setScissor(0, 0, width, height);
     renderer.render(scene, camera);
 
-    // Secondary camera: top-right corner
+    //Secondary camera
     const x = width - viewSize - margin;
     const y = height - viewSize - margin;
 
@@ -346,6 +348,12 @@ asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(time
         if(asteroidMeshes[i].position.x >= browserRightEdge + 5){
             asteroidMeshes[i].position.x = browserLeftEdge - 5;
             asteroidMeshes[i].position.y = (Math.random() * browserHeight) -10;
+        }
+        if (asteroidMeshes[i].userData.boundingBox) {
+            asteroidMeshes[i].userData.boundingBox.setFromObject(asteroidMeshes[i]);
+            if (asteroidMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
+                screenShake();
+            }
         }
     }
         }
@@ -378,9 +386,22 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
             starMeshes[i].position.x = browserLeftEdge - 5;
             starMeshes[i].position.y = (Math.random() * browserHeight) -10;
         }
+        if (starMeshes[i].userData.boundingBox) {
+            starMeshes[i].userData.boundingBox.setFromObject(starMeshes[i]);
+            if (starMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
+                screenShake();
+            }
+        }
     }
         }
     requestAnimationFrame(animateStars);
+}
+
+let shakeAmount = 0;
+const shakeDecay = 0.9; //time screen shakes for
+function screenShake() {
+    shakeAmount = 2.0;
+    collision.play();
 }
 
 function animateSpaceship() {
@@ -411,12 +432,26 @@ function animateSpaceship() {
     ship.rotateY(THREE.MathUtils.degToRad(-90));
     ship.position.addScaledVector(direction, speed);
     camera.position.copy(ship.position);
+    if (shakeAmount > 0.01) {
+        camera.position.x += (Math.random() - 0.5) * shakeAmount;
+        camera.position.y += (Math.random() - 0.5) * shakeAmount;
+        camera.position.z += (Math.random() - 0.5) * shakeAmount;
+        shakeAmount *= shakeDecay;
+    } else {
+        shakeAmount = 0;
+    }
     rearViewCamera.position.copy(camera.position);
     rearViewCamera.rotation.copy(camera.rotation);
     rearViewCamera.rotateY(Math.PI);
+    shipBox.setFromObject(ship);
     renderViews();
 }
+createAsteroids();
+createStars();
+
 animateSpaceship();
+animateStars();
+animateAsteroids();
     </script>
 </body>
 </html>
