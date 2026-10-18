@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ship Model Test</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #status {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      padding: 8px 10px;
+      color: white;
+      background: rgba(0, 0, 0, 0.65);
+      font: 14px/1.4 monospace;
+      white-space: pre-wrap;
+      max-width: calc(100vw - 44px);
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Loading ship model…</div>
+
+  <!-- Keep the existing non-module Three.js / GLTFLoader setup -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script>
+    const statusBox = document.getElementById('status');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x111111);
+
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      10000
+    );
+    camera.position.set(0, 0, 5);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Basic lighting so standard/glTF materials can be seen.
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+    keyLight.position.set(5, 10, 7);
+    scene.add(keyLight);
+
+    // This path is relative to test.html. Keep the model's .bin and
+    // textures folder together with scene.gltf in the same model folder.
+    const modelPath = 'sci-fi_personal_space_pod_shipweekly_challenge/scene.gltf';
+    const loader = new THREE.GLTFLoader();
+
+    loader.load(
+      modelPath,
+      function (gltf) {
+        const ship = gltf.scene;
+
+        // Normalize model scale and center it so the test camera can see it.
+        const bounds = new THREE.Box3().setFromObject(ship);
+        const size = bounds.getSize(new THREE.Vector3());
+        const center = bounds.getCenter(new THREE.Vector3());
+
+        ship.position.sub(center);
+
+        const largestDimension = Math.max(size.x, size.y, size.z);
+        if (largestDimension > 0) {
+          ship.scale.setScalar(4 / largestDimension);
+        }
+
+        scene.add(ship);
+
+        // Recompute bounds after scaling and aim the camera at the model.
+        const scaledBounds = new THREE.Box3().setFromObject(ship);
+        const scaledCenter = scaledBounds.getCenter(new THREE.Vector3());
+        const scaledSize = scaledBounds.getSize(new THREE.Vector3());
+        camera.position.set(
+          scaledCenter.x,
+          scaledCenter.y,
+          scaledCenter.z + Math.max(scaledSize.x, scaledSize.y, scaledSize.z) * 2.5
+        );
+        camera.lookAt(scaledCenter);
+
+        statusBox.textContent =
+          'Ship loaded successfully.\n' +
+          'Model size: ' + size.x.toFixed(3) + ', ' +
+          size.y.toFixed(3) + ', ' + size.z.toFixed(3);
+        console.log('Ship loaded:', gltf);
+        console.log('Original model size:', size);
+      },
+      function (xhr) {
+        if (xhr.total > 0) {
+          statusBox.textContent =
+            'Loading ship: ' + (xhr.loaded / xhr.total * 100).toFixed(1) + '%';
+        }
+      },
+      function (error) {
+        statusBox.textContent =
+          'Could not load ship model.\n' +
+          'Check the Console and verify the model path and its .bin/textures.';
+        console.error('Ship model load failed:', error);
+      }
+    );
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', function () {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

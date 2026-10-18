@@ -6,11 +6,13 @@
     
   <!-- Three.js Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
     <script type="module">
 
 // 1. Initialize the Scene
 const scene = new THREE.Scene();
+
 
 // 2. Configure the Camera (Perspective Projection)
 // Arguments: Field of View (deg), Aspect Ratio, Near Clipping Plane, Far Clipping Plane
@@ -21,7 +23,7 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 camera.position.set(0, 0, 300); // Position the camera along the +Z axis
-camera.lookAt(new THREE.Vector3(0, 0, 0));
+camera.lookAt(new THREE.Vector3(0, 0, 0)); //x,y,z
 scene.add(camera);
 
 const backgroundLoader = new THREE.TextureLoader();
@@ -103,7 +105,98 @@ void main() {
 }
 `;
 
+let ship = null;
+const loader = new THREE.GLTFLoader();
+loader.load(
+    'sci-fi_personal_space_pod_shipweekly_challenge/scene.gltf',
+    function (gltf) {
+        ship = gltf.scene;
 
+        // Calculate the model's original dimensions
+        const box = new THREE.Box3().setFromObject(ship);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        ship.rotation.y = THREE.MathUtils.degToRad(-90);
+
+        console.log("Original ship size:", size);
+        console.log("Original ship center:", center);
+
+        // Center the model around its own origin
+        ship.position.sub(center);
+
+        // Scale its largest dimension to 40 units
+        const largestDimension = Math.max(size.x, size.y, size.z);
+        if (largestDimension > 0) {
+            ship.scale.setScalar(40 / largestDimension);
+        }
+
+        // Put it in front of the camera
+        ship.position.set(0, 0, 300);
+
+        scene.add(ship);
+
+        console.log("Ship added to scene:", ship);
+    },
+    undefined,
+    function (error) {
+        console.error("Ship loading failed:", error);
+    }
+);
+
+// Ambient light illuminates the entire ship
+const ambientLight = new THREE.AmbientLight(0xffffff, 2);
+scene.add(ambientLight);
+
+
+
+let speed = 0.0;
+let speedUp = false;
+let direction = new THREE.Vector3(0, 0, 0);
+camera.getWorldDirection(direction);
+
+let wPressed = false;
+let sPressed = false;
+
+document.addEventListener("keydown", function(event) {
+    if(event.key === "w") {
+        wPressed = true;
+    }
+    if(event.key === "s") {
+        sPressed = true;
+    }
+    if(event.key === "Shift") {
+        speedUp = true;
+    }
+});
+document.addEventListener("keyup", function(event) {
+    if(event.key === "w") {
+        wPressed = false;
+    }
+    if(event.key === "s") {
+        sPressed = false;
+    }
+    if(event.key === "Shift") {
+        speedUp = false;
+    }
+});
+
+//Camera Rotation
+let isMouseDown = false;
+let mouseSensitivity = 0.005;
+let horizontalRotation = 0;   // Rotation left and right
+let VerticalRotation = 0; // Rotation up and down
+const maxPitch = Math.PI / 2 - 0.01;
+document.addEventListener("mousemove", function(event) {
+    if (document.pointerLockElement === renderer.domElement) {
+        horizontalRotation -= event.movementX * mouseSensitivity;
+        VerticalRotation -= event.movementY * mouseSensitivity;
+
+        VerticalRotation = Math.max(-maxPitch,Math.min(maxPitch, VerticalRotation));
+        camera.rotation.order = "YXZ";
+        camera.rotation.y = horizontalRotation;
+        camera.rotation.x = VerticalRotation;
+    }
+});
 
 
 
@@ -199,6 +292,9 @@ renderer.setClearColor(0x111111, 1.0); // Dark grey background
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
+renderer.domElement.addEventListener("click", function() {
+    renderer.domElement.requestPointerLock();
+});
 
 function animateAsteroids() {
     
@@ -252,10 +348,44 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
     }
         }
     
+        
+
     renderer.render(scene, camera);
+
 
     requestAnimationFrame(animateStars);
 }
+
+function animateSpaceship() {
+    requestAnimationFrame(animateSpaceship);
+    if (!ship) return;
+    camera.getWorldDirection(direction);
+    if(wPressed === true) {
+        if(speed < 1.0) { //maximum forward speed
+            if (speedUp === true) {
+                speed += 0.03;
+            } else {
+                speed += 0.01;
+            }
+        }
+    }
+    if(sPressed === true) {
+        if(speed > -0.1) { //maximum backward speed
+            speed -= 0.01;
+        }
+    }
+    if(speed < 0.0 && sPressed === false) {
+        speed += 0.01;
+    }
+    if(speed > 0.0 && wPressed === false) {
+        speed -= 0.01;
+    }
+    ship.rotation.copy(camera.rotation);
+    ship.rotateY(THREE.MathUtils.degToRad(-90));
+    ship.position.addScaledVector(direction, speed);
+    camera.position.copy(ship.position).add(new THREE.Vector3(0, 0, 50));
+}
+animateSpaceship();
     </script>
 </body>
 </html>
