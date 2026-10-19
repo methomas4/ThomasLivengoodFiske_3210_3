@@ -233,17 +233,20 @@ function randomPoint(){
 }
 
 function placeObject(object){
-    const distance = (Math.random() * 50 + 850);
+    const distance = Math.random() * 400 + 500;
     const halfHeight = distance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
     const halfWidth = halfHeight * camera.aspect;
     const localPos = new THREE.Vector3((Math.random() * 2 - 1) * halfWidth, (Math.random() * 2 - 1) * halfWidth, -distance);
     object.position.copy(localPos.applyQuaternion(camera.quaternion).add(camera.position));
     object.userData.startY = object.position.y;
+    object.userData.startX = object.position.x;
+    object.userData.startZ = object.position.z;
 }
 
 function shouldReset(object){
     const offset = object.position.clone().sub(camera.position);
-    return offset.lengthSq() > 900 * 900;
+    return offset.lengthSq() > 600 * 600;
+//     return object.position.z > camera.position.z + 100
 }
 
 /*
@@ -274,13 +277,24 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
         side: THREE.DoubleSide
     });
     const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
-    asteroidMeshes.push(asteroid);
-    const asteroidScale = 1.0 + (Math.random() * 2 - 1) * 0.8;
-    asteroidMeshes[i].scale.setScalar(asteroidScale);
-    asteroidMeshes[i].position.copy(randomPoint()); 
-    asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
-    asteroidMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
-    scene.add(asteroidMeshes[i]);
+
+const asteroidScale = 1.0 + (Math.random() * 2 - 1) * 0.8;
+asteroid.scale.setScalar(asteroidScale);
+
+placeObject(asteroid);
+
+asteroid.userData.driftType = i % 4;
+asteroid.userData.driftSpeed = 0.2 + Math.random() * 0.3;
+asteroid.userData.curveAmt = Math.random() * 0.0001;
+
+asteroid.userData.waveSpeed = 0.2 + Math.random() * 0.2;
+asteroid.userData.waveAmplitude = 5 + Math.random() * 10;
+asteroid.userData.waveFrequency = 0.01 + Math.random() * 0.02;
+
+asteroid.userData.boundingBox = new THREE.Box3().setFromObject(asteroid);
+
+asteroidMeshes[i] = asteroid;
+scene.add(asteroid);
 }, undefined, function (err) {
     console.error("texture not loaded", err);
 });
@@ -385,19 +399,43 @@ function renderViews() {
   */
 //This function animates asteroids according to various drift functions across the z-axis and allows the asteroids to grow and shrink over time
 function animateAsteroids() {
-    
-        for(let i = 0; i < asteroidMeshes.length; i++){
-            const timeSinceStart = clock.getElapsedTime();
-            if(asteroidMeshes[i]){
-        asteroidMeshes[i].rotation.x += 0.01;
-        asteroidMeshes[i].rotation.y += 0.01;
-        asteroidMeshes[i].position.x += 0.05;
+    for (let i = 0; i < asteroidMeshes.length; i++) {
+        const timeSinceStart = clock.getElapsedTime();
+        const asteroid = asteroidMeshes[i];
 
-        asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency) * waveAmplitude;
+        if (asteroid) {
+         // How far the asteroid has moved along Z
+        const distance = asteroid.position.z - asteroid.userData.startZ;
+
+        asteroid.rotation.x += 0.01;
+        asteroid.rotation.y += 0.01;
+
+        asteroid.position.z += 0.5;
+
+        switch (asteroid.userData.driftType) {
+            case 0: // Sinusoidal movement
+                asteroid.position.y = asteroid.userData.startY +
+                    Math.sin(timeSinceStart * asteroid.userData.waveSpeed + distance * asteroid.userData.waveFrequency) * asteroid.userData.waveAmplitude;
+                    break;
+
+                case 1: // Linear movement
+                    asteroid.position.y = asteroid.userData.startY + distance * asteroid.userData.driftSpeed;
+                    break;
+
+                case 2: // Parabolic movement
+                    asteroid.position.y = asteroid.userData.startY +
+                        asteroid.userData.curveAmt * distance * distance;
+                    break;
+
+                case 3: // Cubic movement
+                    asteroid.position.y = asteroid.userData.startY +
+                        asteroid.userData.curveAmt * Math.pow(distance, 3) * 0.01;
+                    break;
+            }
 
 
-        if(shouldReset(asteroidMeshes[i])){
-           placeObject(asteroidMeshes[i]);
+        if(shouldReset(asteroid)){
+           placeObject(asteroid);
        }
        
        /*
@@ -406,16 +444,10 @@ function animateAsteroids() {
   * I used the following prompts: 
   * "Why won't my test cube show up:" and "Why does my collision logic not work, it should work currently if the top/botom/front/back are hit by any of the asteroids:".
   */
-       if (asteroidMeshes[i].userData.boundingBox) {
-            asteroidMeshes[i].userData.boundingBox.setFromObject(asteroidMeshes[i]);
-            if (asteroidMeshes[i].userData.boundingBox.intersectsBox(shipBox)) { //When an asteroid collides with the ship, reset its position randomly
-            asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
-            asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-            asteroidMeshes[i].position.z = -500;
-
-            asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
-            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
-            asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+       if (asteroid.userData.boundingBox) {
+            asteroid.userData.boundingBox.setFromObject(asteroid);
+            if (asteroid.userData.boundingBox.intersectsBox(shipBox)) { //When an asteroid collides with the ship, reset its position randomly
+            placeObject(asteroid);
             screenShake();
             }
         }
@@ -434,7 +466,7 @@ function animateAsteroids() {
 
         starMeshes[i].rotation.x += 0.01;
         starMeshes[i].rotation.y += 0.01;
-        starMeshes[i].position.x += 0.05;
+        starMeshes[i].position.z += 0.5;
 
     starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
         
