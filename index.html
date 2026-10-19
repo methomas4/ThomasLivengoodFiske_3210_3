@@ -253,59 +253,35 @@ const newCube = new Float32Array([
             wireframe: false,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.1
+            opacity: 0.0
         });
 
         
 
-        const cubeMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
-        cubeMesh.position.set(0,0,299); //Move to camera
-        cubeMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
-        cubeMesh.position.set(0,0,300);// Move back to camera
-        scene.add(cubeMesh);
+        const cubeFrontMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeFrontMesh.position.set(0,0,299); //Move to front of camera
+        // cubeFrontMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeFrontMesh);
 
-        const collisionWindowAnimation = new THREE.AnimationMixer(cubeMesh);
-        const collisionCameraAnimation = new THREE.AnimationMixer(camera);
+        const cubeBackMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeBackMesh.position.set(0,0,301); //Move to back of camera
+        // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeBackMesh);
 
-        function handleShipCollision(hitBoxA, hitBoxB){
-            const originalCubeY = cubeMesh.position.y;
-            const originalCameraY = camera.position.y;
+        const cubeLeftMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeBackMesh.position.set(1,0,300); //Move to back of camera
+        // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeLeftMesh);
 
-            if (hitBoxA.intersectsBox(hitBoxB)){
-                console.log("Collision Detected");
+        const cubeRightMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeBackMesh.position.set(-1,0,300); //Move to back of camera
+        // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeRightMesh);
 
-            const collsionDurations = [0,0.1,0.3,0.4];
-            const windowCollisionMovements = [originalCubeY, originalCubeY + 100, originalCubeY - 100, originalCubeY];
-            const cameraCollisionMovements = [originalCameraY, originalCameraY + 100, originalCameraY - 100, originalCameraY];
-
-            const windowCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, windowCollisionMovements);
-            const cameraCollisionTrack = new THREE.NumberKeyframeTrack('.position[y]', collsionDurations, cameraCollisionMovements);
-
-            const windowCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [windowCollisionTrack]);
-            const cameraCollisionClip = new THREE.AnimationClip('CollisionDetected', 0.4, [cameraCollisionTrack]);
-
-            const asteroidWindowCollision = collisionWindowAnimation.clipAction(windowCollisionClip);
-            const asteroidCameraCollision = collisionCameraAnimation.clipAction(cameraCollisionClip);
-            
-            if(!asteroidWindowCollision.isRunning() && !asteroidCameraCollision.isRunning()){
-                console.log("starting shake");
-            asteroidWindowCollision.reset(); //Don't want 2 copies running
-            asteroidCameraCollision.reset(); //Don't want 2 copies running
-
-            asteroidWindowCollision.setLoop(THREE.LoopOnce, 1);
-            asteroidCameraCollision.setLoop(THREE.LoopOnce, 1);
-
-            asteroidWindowCollision.clampWhenFinished = true;
-            asteroidCameraCollision.clampWhenFinished = true;
-
-            asteroidWindowCollision.play();
-            asteroidCameraCollision.play();
-            }
-            return true;
-            }
-            return false;
-        }
-
+        const cubeFrontOffset = new THREE.Vector3(0, 0, -10);
+        const cubeBackOffset = new THREE.Vector3(0, 0, 10);
+        const cubeLeftOffset = new THREE.Vector3(-10, 0, 0);
+        const cubeRightOffset = new THREE.Vector3(10, 0, 0);
 
 function createAsteroids(){
 var textureLoader = new THREE.TextureLoader();
@@ -432,6 +408,10 @@ function renderViews() {
     renderer.setScissorTest(false);
 }
 
+    const shipFrontHitbox = new THREE.Box3().setFromObject(cubeFrontMesh);
+       const shipBackHitbox = new THREE.Box3().setFromObject(cubeBackMesh);
+       const shipLeftHitbox = new THREE.Box3().setFromObject(cubeLeftMesh);
+       const shipRightHitbox = new THREE.Box3().setFromObject(cubeRightMesh);
 function animateAsteroids() {
     var driftType = 0;
     var driftSpeed = 0;
@@ -448,6 +428,18 @@ function animateAsteroids() {
        asteroidMeshes[i].position.z += 0.5;
        scaleFactor = 5 + currSinVal * asteroidMeshes[i].userData.growShrinkVariance;
        asteroidMeshes[i].scale.setScalar((asteroidMeshes[i].userData.baseScale * scaleFactor));
+       const asteroidHitbox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
+
+       //Logic for if the ship is hit from the front, back, top, or bottom
+        if(asteroidHitbox.intersectsBox(shipFrontHitbox) || asteroidHitbox.intersectsBox(shipBackHitbox) || asteroidHitbox.intersectsBox(shipLeftHitbox) || asteroidHitbox.intersectsBox(shipRightHitbox)){
+            asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+            asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
+            asteroidMeshes[i].position.z = -500;
+
+            asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
+            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
+            asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
+        }
        var x = asteroidMeshes[i].position.z;
         
          switch(asteroidMeshes[i].userData.driftType){
@@ -485,7 +477,6 @@ function animateAsteroids() {
         }
     }
 }
-
     requestAnimationFrame(animateAsteroids);
 }
 
@@ -510,6 +501,17 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
     }else{
         starMeshes[i].scale.set(baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance));
     }
+    const starHitbox = new THREE.Box3().setFromObject(starMeshes[i]);
+
+    if(starHitbox.intersectsBox(shipFrontHitbox) || starHitbox.intersectsBox(shipBackHitbox) || starHitbox.intersectsBox(shipLeftHitbox) || starHitbox.intersectsBox(shipRightHitbox)){
+            starMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
+            starMeshes[i].position.y = (Math.random() -0.5) * 60;
+            starMeshes[i].position.z = -500;
+
+            starMeshes[i].userData.startX = starMeshes[i].position.x;
+            starMeshes[i].userData.startY = starMeshes[i].position.y;
+            starMeshes[i].userData.startZ = starMeshes[i].position.z;
+        }
 
         if(starMeshes[i].position.z >= 600){
             starMeshes[i].position.x = (Math.random() - 0.5) * 100;
@@ -565,6 +567,11 @@ function animateSpaceship() {
     const cameraOffset = new THREE.Vector3(0, 0, 15);
     cameraOffset.applyQuaternion(ship.quaternion);
     camera.position.copy(ship.position).sub(cameraOffset);
+
+    cubeFrontMesh.position.copy(cubeFrontOffset).applyQuaternion(ship.quaternion).add(ship.position);
+    cubeBackMesh.position.copy(cubeBackOffset).applyQuaternion(ship.quaternion).add(ship.position);
+    cubeLeftMesh.position.copy(cubeLeftOffset).applyQuaternion(ship.quaternion).add(ship.position);
+    cubeRightMesh.position.copy(cubeRightOffset).applyQuaternion(ship.quaternion).add(ship.position);
     if (shakeAmount > 0.01) {
         camera.position.x += (Math.random() - 0.5) * shakeAmount;
         camera.position.y += (Math.random() - 0.5) * shakeAmount;
