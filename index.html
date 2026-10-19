@@ -388,7 +388,6 @@ function animateAsteroids() {
         for(let i = 0; i < starMeshes.length; i++){
             const timeSinceStart = clock.getElapsedTime();
             if(starMeshes[i]){
-                starMeshes[i].children[0].material.uniforms.uTime.value = timeSinceStart;
                 const starMovementAlgo = Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency ) * waveAmplitude; //Controls the movement of the stars
                 const currSinVal = Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency );
                 const currCosineVal = Math.cos(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency );
