@@ -42,9 +42,8 @@ scene.background = spaceTexture;
 const asteroidMeshes = [];
 const starMeshes = [];
 
-const numOfAsteroids = 50; //controls the number of asteroids rendered
-const numOfStars = 50; //controls the number of stars rendered
-
+const numOfAsteroids = 100; //controls the number of asteroids rendered
+const numOfStars = 100; //controls the number of stars rendered
 const clock = new THREE.Clock();
 const deltaTime = clock.getDelta(); // Gets the elapsed time since the clock was last updated
 var driftType = 0;
@@ -152,7 +151,7 @@ loader.load(
         }
 
         // Put it in front of the camera
-        ship.position.set(0, 0, 290);
+        ship.position.set(0, 0, 300);
 
         scene.add(ship);
 
@@ -217,6 +216,36 @@ document.addEventListener("mousemove", function(event) { // Rotates the camera b
         camera.rotation.x = VerticalRotation;
     }
 });
+
+function randomPoint(){
+    const maxRadius = 800;
+    const randomRadius = Math.random() * maxRadius + 100;
+    const z = Math.random() * 2 - 1;
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.sqrt(1 - z * z);
+    const randomVec = new THREE.Vector3(
+        distance * Math.cos(angle),
+        distance * Math.sin(angle),
+        z
+    );
+    randomVec.multiplyScalar(randomRadius);
+    return randomVec;
+}
+
+function placeObject(object){
+    const distance = (Math.random() * 50 + 850);
+    const halfHeight = distance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+    const halfWidth = halfHeight * camera.aspect;
+    const localPos = new THREE.Vector3((Math.random() * 2 - 1) * halfWidth, (Math.random() * 2 - 1) * halfWidth, -distance);
+    object.position.copy(localPos.applyQuaternion(camera.quaternion).add(camera.position));
+    object.userData.startY = object.position.y;
+}
+
+function shouldReset(object){
+    const offset = object.position.clone().sub(camera.position);
+    return offset.lengthSq() > 900 * 900;
+}
+
 /*
   * I used ChatGPT to help debug my asteroid creation logic.
   * With each prompt I entered my current code so ChatGPT could see my progress.
@@ -226,38 +255,31 @@ document.addEventListener("mousemove", function(event) { // Rotates the camera b
   */
 // Creates and textures asteroids, placing them at random positions along the Z-axis
 function createAsteroids(){
-var textureLoader = new THREE.TextureLoader();
+var textureLoader = new THREE . TextureLoader () ;
 
 for(let i = 0; i < numOfAsteroids; i++){
+
 const asteroidGeometry = new THREE.SphereGeometry(5, 9, 9);
 textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
-    var material = new THREE.ShaderMaterial({ map: texture, uniforms: {
-        uTime: { value: 0 },
-        uScale: { value: 3.0 },
-        uTexture: { value: texture },
-    },
-    vertexShader: vertexShader,
-    fragmentShader: fragmentShader,
-    side: THREE.DoubleSide });
-    asteroidMeshes.push(new THREE.Mesh(asteroidGeometry, material));
-    asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
-    asteroidMeshes[i].position.y = (Math.random() -0.5) * 60;
-    asteroidMeshes[i].position.z = (Math.random() -0.5) * 1000;
+    const asteroidMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: Math.random() * 1000 },
+            uScale: { value: 4.0 },
+            uTexture: { value: texture }
+            // I used this stackoverflow page to learn how to put a texture into a shaderMaterial: https://stackoverflow.com/questions/45442535/three-js-shadermaterial-add-texture-to-particles
 
+        },
+        vertexShader: vertexShader,
+        fragmentShader: asteroidFragmentShader,
+        side: THREE.DoubleSide
+    });
+    const asteroid = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+    asteroidMeshes.push(asteroid);
+    const asteroidScale = 1.0 + (Math.random() * 2 - 1) * 0.8;
+    asteroidMeshes[i].scale.setScalar(asteroidScale);
+    asteroidMeshes[i].position.copy(randomPoint()); 
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
-    asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
-    asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
-    asteroidMeshes[i].userData.driftType = i % 4;
-asteroidMeshes[i].userData.driftSpeed = 0.2 + Math.random() * 0.3;
-asteroidMeshes[i].userData.curveAmt = Math.random() * 0.0001;
-
-asteroidMeshes[i].userData.growShrinkVariance = 0.1 + (0.01 * Math.random());
-asteroidMeshes[i].userData.baseScale = 0.5 * Math.random();
-asteroidMeshes[i].userData.scaleSpeed = 2.0 + Math.random();
-
-asteroidMeshes[i].userData.waveSpeed = 0.2 + Math.random() * 0.2;
-asteroidMeshes[i].userData.waveAmplitude = 5 + Math.random() * 10;
-asteroidMeshes[i].userData.waveFrequency = 0.01 + Math.random() * 0.02;
+    asteroidMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
     scene.add(asteroidMeshes[i]);
 }, undefined, function (err) {
     console.error("texture not loaded", err);
@@ -302,8 +324,7 @@ const starAuraMaterial = new THREE.ShaderMaterial({
     starMeshes.push(new THREE.Mesh(starGeometry, starMaterial));
     const auraMesh = new THREE.Mesh(starAuraGeometry,starAuraMaterial);
     starMeshes[i].add(auraMesh);
-    starMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
-    starMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
+    starMeshes[i].position.copy(randomPoint());
     starMeshes[i].userData.startY = starMeshes[i].position.y;
     starMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(starMeshes[i]);
     scene.add(starMeshes[i]);
@@ -364,59 +385,28 @@ function renderViews() {
   */
 //This function animates asteroids according to various drift functions across the z-axis and allows the asteroids to grow and shrink over time
 function animateAsteroids() {
-    var driftType = 0;
-    var driftSpeed = 0;
-    var curveAmt = 0;
-    var scaleFactor = 0;
+    
         for(let i = 0; i < asteroidMeshes.length; i++){
             const timeSinceStart = clock.getElapsedTime();
             if(asteroidMeshes[i]){
-                const asteroidMovementAlgo = Math.sin(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + asteroidMeshes[i].position.x * asteroidMeshes[i].userData.waveFrequency ) * asteroidMeshes[i].userData.waveAmplitude; //Controls the movement of the asteroids
-                const currSinVal = Math.sin(timeSinceStart * asteroidMeshes[i].userData.scaleSpeed);
-        
         asteroidMeshes[i].rotation.x += 0.01;
         asteroidMeshes[i].rotation.y += 0.01;
-       asteroidMeshes[i].position.z += 0.5;
-       scaleFactor = 5 + currSinVal * asteroidMeshes[i].userData.growShrinkVariance;
-       asteroidMeshes[i].scale.setScalar((asteroidMeshes[i].userData.baseScale * scaleFactor));
-       const asteroidHitbox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
+        asteroidMeshes[i].position.x += 0.05;
 
-       var x = asteroidMeshes[i].position.z;
-        
-         switch(asteroidMeshes[i].userData.driftType){
-            case 0: // Assigns a sinusoidal drift pattern
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + x * asteroidMeshes[i].userData.waveFrequency) * asteroidMeshes[i].userData.waveAmplitude;
-                break;
-            case 1: // Assigns a linear drift pattern
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (timeSinceStart * asteroidMeshes[i].userData.driftSpeed) - 100;
-                break;
-            case 2: // Assigns a parabolic drift pattern
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (asteroidMeshes[i].userData.curveAmt * x * x) - 50;
-                break;
-            case 3: // Assigns an irregular drift pattern (cubic plus logarithmic)
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + (asteroidMeshes[i].userData.curveAmt * Math.pow(x, 3)) + (0.5 * Math.log(Math.abs(x))) - 200;
-                break;
-            default: //If any asteroids somehow break this, they will drift along some cosinusoidal function 
-            asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.cos(timeSinceStart * asteroidMeshes[i].userData.waveSpeed + x * asteroidMeshes[i].userData.waveFrequency) * asteroidMeshes[i].userData.waveAmplitude; 
-         }
+        asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency) * waveAmplitude;
 
-        if(asteroidMeshes[i].position.z >= 600){ //When the z position of the asteroids is greater than or equal to 600, reset them to a random position
-            asteroidMeshes[i].position.x = (Math.random() - 0.5) * 100;
-            asteroidMeshes[i].position.y = (Math.random() - 0.5) * 60;
-            asteroidMeshes[i].position.z = -500;
 
-            asteroidMeshes[i].userData.startX = asteroidMeshes[i].position.x;
-            asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
-            asteroidMeshes[i].userData.startZ = asteroidMeshes[i].position.z;
-        }
-
- /*
+        if(shouldReset(asteroidMeshes[i])){
+           placeObject(asteroidMeshes[i]);
+       }
+       
+       /*
   * I used ChatGPT to help debug my asteroid collision logic.
   * With each prompt I entered my current code so ChatGPT could see my progress.
   * I used the following prompts: 
   * "Why won't my test cube show up:" and "Why does my collision logic not work, it should work currently if the top/botom/front/back are hit by any of the asteroids:".
   */
-        if (asteroidMeshes[i].userData.boundingBox) {
+       if (asteroidMeshes[i].userData.boundingBox) {
             asteroidMeshes[i].userData.boundingBox.setFromObject(asteroidMeshes[i]);
             if (asteroidMeshes[i].userData.boundingBox.intersectsBox(shipBox)) { //When an asteroid collides with the ship, reset its position randomly
             asteroidMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
@@ -430,11 +420,9 @@ function animateAsteroids() {
             }
         }
     }
-}
-    requestAnimationFrame(animateAsteroids);
-}
-//This function animates stars according how their grow and shrink over time and allows stars to move across the z-axis
-function animateStars() {
+        }
+
+
     const baseScale = 1.0;
     const growShrinkVariance = 0.25;
         for(let i = 0; i < starMeshes.length; i++){
@@ -446,9 +434,9 @@ function animateStars() {
 
         starMeshes[i].rotation.x += 0.01;
         starMeshes[i].rotation.y += 0.01;
-       starMeshes[i].position.z += 0.5 + (3 * deltaTime);
+        starMeshes[i].position.x += 0.05;
 
-starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
+    starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
         
     if(i % 2 == 0){ //This allows the star mesh to grow and shrink based on the current index of the for loop and the current value of a sine function
         starMeshes[i].scale.set(baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance));
@@ -456,27 +444,19 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
         starMeshes[i].scale.set(baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance));
     }
 
-        if(starMeshes[i].position.z >= 600){ //When the z position of the asteroids is greater than or equal to 600, reset them to a random position
-            starMeshes[i].position.x = (Math.random() - 0.5) * 100;
-            starMeshes[i].position.y = (Math.random() - 0.5) * 60;
-            starMeshes[i].position.z = -500;
-        }
+       if(shouldReset(starMeshes[i])){
+           placeObject(starMeshes[i]);
+       }
         if (starMeshes[i].userData.boundingBox) {
             starMeshes[i].userData.boundingBox.setFromObject(starMeshes[i]);
-            if (starMeshes[i].userData.boundingBox.intersectsBox(shipBox)) { //When a star collides with the ship, reset its position randomly
-            starMeshes[i].position.x = (Math.random() -0.5) * 100; // Don't want overlap
-            starMeshes[i].position.y = (Math.random() -0.5) * 60;
-            starMeshes[i].position.z = -500;
-
-            starMeshes[i].userData.startX = starMeshes[i].position.x;
-            starMeshes[i].userData.startY = starMeshes[i].position.y;
-            starMeshes[i].userData.startZ = starMeshes[i].position.z;
+            if (starMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
                 screenShake();
             }
         }
     }
         }
-    requestAnimationFrame(animateStars);
+
+    requestAnimationFrame(animateAsteroids);
 }
 
 let shakeAmount = 0;
@@ -516,11 +496,7 @@ function animateSpaceship() {
     ship.rotation.copy(camera.rotation);
     ship.rotateY(THREE.MathUtils.degToRad(-90));
     ship.position.addScaledVector(direction, speed);
-    console.log("Ship position:", ship.position);
-    console.log("Current speed:", speed);
-    const cameraOffset = new THREE.Vector3(0, 0, 70);
-    cameraOffset.applyQuaternion(ship.quaternion);
-    camera.position.copy(ship.position).sub(cameraOffset);
+    camera.position.copy(ship.position);
     if (shakeAmount > 0.01) {
         camera.position.x += (Math.random() - 0.5) * shakeAmount;
         camera.position.y += (Math.random() - 0.5) * shakeAmount;
@@ -539,7 +515,7 @@ createAsteroids();
 createStars();
 
 animateSpaceship();
-animateStars();
+
 animateAsteroids();
     </script>
 </body>
