@@ -42,8 +42,8 @@ scene.background = spaceTexture;
 const asteroidMeshes = [];
 const starMeshes = [];
 
-const numOfAsteroids = 20; //controls the number of asteroids rendered
-const numOfStars = 20; //controls the number of stars rendered
+const numOfAsteroids = 50; //controls the number of asteroids rendered
+const numOfStars = 50; //controls the number of stars rendered
 
 const clock = new THREE.Clock();
 const deltaTime = clock.getDelta();
@@ -253,7 +253,7 @@ const newCube = new Float32Array([
             wireframe: false,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.0
+            opacity: 0.1
         });
 
         
@@ -278,10 +278,22 @@ const newCube = new Float32Array([
         // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
         scene.add(cubeRightMesh);
 
+        const cubeTopMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeBackMesh.position.set(0,1,300); //Move to back of camera
+        // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeTopMesh);
+
+        const cubeBottomMesh = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cubeBackMesh.position.set(0,-1,300); //Move to back of camera
+        // cubeBackMesh.scale.set(4,4,4); //Scale by 4. How big is the ship (currently at 20x20x20)
+        scene.add(cubeBottomMesh);
+
         const cubeFrontOffset = new THREE.Vector3(0, 0, -10);
         const cubeBackOffset = new THREE.Vector3(0, 0, 10);
         const cubeLeftOffset = new THREE.Vector3(-10, 0, 0);
         const cubeRightOffset = new THREE.Vector3(10, 0, 0);
+        const cubeTopOffset = new THREE.Vector3(0, 10, 0);
+        const cubeBottomOffset = new THREE.Vector3(0, -10, 0);
 
 function createAsteroids(){
 var textureLoader = new THREE.TextureLoader();
@@ -412,6 +424,9 @@ function renderViews() {
        const shipBackHitbox = new THREE.Box3().setFromObject(cubeBackMesh);
        const shipLeftHitbox = new THREE.Box3().setFromObject(cubeLeftMesh);
        const shipRightHitbox = new THREE.Box3().setFromObject(cubeRightMesh);
+       const shipTopHitbox = new THREE.Box3().setFromObject(cubeTopMesh);
+       const shipBottomHitbox = new THREE.Box3().setFromObject(cubeBottomMesh);
+
 function animateAsteroids() {
     var driftType = 0;
     var driftSpeed = 0;
@@ -572,6 +587,8 @@ function animateSpaceship() {
     cubeBackMesh.position.copy(cubeBackOffset).applyQuaternion(ship.quaternion).add(ship.position);
     cubeLeftMesh.position.copy(cubeLeftOffset).applyQuaternion(ship.quaternion).add(ship.position);
     cubeRightMesh.position.copy(cubeRightOffset).applyQuaternion(ship.quaternion).add(ship.position);
+    cubeTopMesh.position.copy(cubeTopOffset).applyQuaternion(ship.quaternion).add(ship.position);
+    cubeBottomMesh.position.copy(cubeBottomOffset).applyQuaternion(ship.quaternion).add(ship.position);
     if (shakeAmount > 0.01) {
         camera.position.x += (Math.random() - 0.5) * shakeAmount;
         camera.position.y += (Math.random() - 0.5) * shakeAmount;
