@@ -42,8 +42,8 @@ scene.background = spaceTexture;
 const asteroidMeshes = [];
 const starMeshes = [];
 
-const numOfAsteroids = 10; //controls the number of asteroids rendered
-const numOfStars = 10; //controls the number of stars rendered
+const numOfAsteroids = 100; //controls the number of asteroids rendered
+const numOfStars = 100; //controls the number of stars rendered
 const clock = new THREE.Clock();
 const waveSpeed = 0.5;
 const waveFrequency = 0.1;
@@ -212,14 +212,40 @@ document.addEventListener("mousemove", function(event) {
     }
 });
 
+function randomPoint(){
+    const maxRadius = 800;
+    const randomRadius = Math.random() * maxRadius + 100;
+    const z = Math.random() * 2 - 1;
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.sqrt(1 - z * z);
+    const randomVec = new THREE.Vector3(
+        distance * Math.cos(angle),
+        distance * Math.sin(angle),
+        z
+    );
+    randomVec.multiplyScalar(randomRadius);
+    return randomVec;
+}
 
+function placeObject(object){
+    const distance = (Math.random() * 50 + 850);
+    const halfHeight = distance * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+    const halfWidth = halfHeight * camera.aspect;
+    const localPos = new THREE.Vector3((Math.random() * 2 - 1) * halfWidth, (Math.random() * 2 - 1) * halfWidth, -distance);
+    object.position.copy(localPos.applyQuaternion(camera.quaternion).add(camera.position));
+    object.userData.startY = object.position.y;
+}
+
+function shouldReset(object){
+    const offset = object.position.clone().sub(camera.position);
+    return offset.lengthSq() > 900 * 900;
+}
 
 function createAsteroids(){
 var textureLoader = new THREE . TextureLoader () ;
 
 for(let i = 0; i < numOfAsteroids; i++){
 
-    
 const asteroidGeometry = new THREE.SphereGeometry(5, 9, 9);
 textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     const asteroidMaterial = new THREE.ShaderMaterial({
@@ -238,8 +264,7 @@ textureLoader.load("istockphoto-1390352280-612x612.jpg", function (texture) {
     asteroidMeshes.push(asteroid);
     const asteroidScale = 1.0 + (Math.random() * 2 - 1) * 0.8;
     asteroidMeshes[i].scale.setScalar(asteroidScale);
-    asteroidMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
-    asteroidMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
+    asteroidMeshes[i].position.copy(randomPoint()); 
     asteroidMeshes[i].userData.startY = asteroidMeshes[i].position.y;
     asteroidMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(asteroidMeshes[i]);
     scene.add(asteroidMeshes[i]);
@@ -285,8 +310,7 @@ const starAuraMaterial = new THREE.ShaderMaterial({
     starMeshes.push(new THREE.Mesh(starGeometry, starMaterial));
     const auraMesh = new THREE.Mesh(starAuraGeometry,starAuraMaterial);
     starMeshes[i].add(auraMesh);
-    starMeshes[i].position.x = (Math.random() * browserWidth) + browserLeftEdge; // Don't want overlap
-    starMeshes[i].position.y = (Math.random() * browserHeight) + browserLeftEdge;
+    starMeshes[i].position.copy(randomPoint());
     starMeshes[i].userData.startY = starMeshes[i].position.y;
     starMeshes[i].userData.boundingBox = new THREE.Box3().setFromObject(starMeshes[i]);
     scene.add(starMeshes[i]);
@@ -341,14 +365,14 @@ function animateAsteroids() {
             if(asteroidMeshes[i]){
         asteroidMeshes[i].rotation.x += 0.01;
         asteroidMeshes[i].rotation.y += 0.01;
-       asteroidMeshes[i].position.x += 0.05;
+        asteroidMeshes[i].position.x += 0.05;
 
-asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency) * waveAmplitude;
+        asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + asteroidMeshes[i].position.x * waveFrequency) * waveAmplitude;
 
-        if(asteroidMeshes[i].position.x >= browserRightEdge + 5){
-            asteroidMeshes[i].position.x = browserLeftEdge - 5;
-            asteroidMeshes[i].position.y = (Math.random() * browserHeight) -10;
-        }
+
+        if(shouldReset(asteroidMeshes[i])){
+           placeObject(asteroidMeshes[i]);
+       }
         if (asteroidMeshes[i].userData.boundingBox) {
             asteroidMeshes[i].userData.boundingBox.setFromObject(asteroidMeshes[i]);
             if (asteroidMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
@@ -357,10 +381,8 @@ asteroidMeshes[i].position.y = asteroidMeshes[i].userData.startY + Math.sin(time
         }
     }
         }
-    requestAnimationFrame(animateAsteroids);
-}
 
-function animateStars() {
+
     const baseScale = 1.0;
     const growShrinkVariance = 0.25;
         for(let i = 0; i < starMeshes.length; i++){
@@ -372,9 +394,9 @@ function animateStars() {
 
         starMeshes[i].rotation.x += 0.01;
         starMeshes[i].rotation.y += 0.01;
-       starMeshes[i].position.x += 0.05;
+        starMeshes[i].position.x += 0.05;
 
-starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
+    starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
         
     if(i % 2 == 0){
         starMeshes[i].scale.set(baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance),baseScale + (currSinVal * growShrinkVariance));
@@ -382,10 +404,9 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
         starMeshes[i].scale.set(baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance),baseScale + (currCosineVal * growShrinkVariance));
     }
 
-        if(starMeshes[i].position.x >= browserRightEdge + 5){
-            starMeshes[i].position.x = browserLeftEdge - 5;
-            starMeshes[i].position.y = (Math.random() * browserHeight) -10;
-        }
+       if(shouldReset(starMeshes[i])){
+           placeObject(starMeshes[i]);
+       }
         if (starMeshes[i].userData.boundingBox) {
             starMeshes[i].userData.boundingBox.setFromObject(starMeshes[i]);
             if (starMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
@@ -394,7 +415,8 @@ starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceSta
         }
     }
         }
-    requestAnimationFrame(animateStars);
+
+    requestAnimationFrame(animateAsteroids);
 }
 
 let shakeAmount = 0;
@@ -450,7 +472,7 @@ createAsteroids();
 createStars();
 
 animateSpaceship();
-animateStars();
+
 animateAsteroids();
     </script>
 </body>
