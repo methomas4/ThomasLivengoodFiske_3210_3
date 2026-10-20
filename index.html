@@ -545,42 +545,6 @@ function heal() {
     }
 }
 
-//health bar ui element
-const healthBar = new THREE.Group();
-
-const barBackground = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 0.2),
-    new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        depthTest: false
-    })
-);
-
-const barFill = new THREE.Mesh(
-    new THREE.PlaneGeometry(2, 0.2),
-    new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
-        depthTest: false
-    })
-);
-healthBar.add(barBackground);
-healthBar.add(barFill);
-barBackground.renderOrder = 999;
-barFill.renderOrder = 1000;
-camera.add(healthBar);
-
-function damage() {
-    if (barFill.scale.x > 0.0) {
-        barFill.scale.x -= 0.1;
-        barFill.position.x -= 0.1;
-    }
-}
-function heal() {
-    if (barFill.scale.x < 1.0) {
-        barFill.scale.x += 0.1;
-        barFill.position.x += 0.1;
-    }
-}
 
 //This function allows the user to control the spaceship's speed when in first person mode by using the keys 'w' and 's'
 function animateSpaceship() {
