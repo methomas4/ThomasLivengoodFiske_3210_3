@@ -446,10 +446,14 @@ function animateAsteroids() {
   */
        if (asteroid.userData.boundingBox) {
             asteroid.userData.boundingBox.setFromObject(asteroid);
-            if (asteroid.userData.boundingBox.intersectsBox(shipBox)) { //When an asteroid collides with the ship, reset its position randomly
+            const isColliding = asteroid.userData.boundingBox.intersectsBox(shipBox);
+            if (isColliding && !asteroidMeshes[i].userData.isColliding) { //When an asteroid collides with the ship, reset its position randomly
             placeObject(asteroid);
+                damage();
             screenShake();
+                scene.remove(asteroidMeshes[i]);
             }
+            asteroidMeshes[i].userData.isColliding = isColliding;
         }
     }
         }
@@ -481,9 +485,13 @@ function animateAsteroids() {
        }
         if (starMeshes[i].userData.boundingBox) {
             starMeshes[i].userData.boundingBox.setFromObject(starMeshes[i]);
-            if (starMeshes[i].userData.boundingBox.intersectsBox(shipBox)) {
+            const isColliding = starMeshes[i].userData.boundingBox.intersectsBox(shipBox);
+            if (isColliding && !starMeshes[i].userData.isColliding) {
+                heal();
                 screenShake();
+                scene.remove(starMeshes[i]);
             }
+            starMeshes[i].userData.isColliding = isColliding;
         }
     }
         }
@@ -498,6 +506,80 @@ const shakeDecay = 0.9; //time screen shakes for
 function screenShake() {
     shakeAmount = 2.0;
     collision.play();
+}
+
+//health bar ui element
+const healthBar = new THREE.Group();
+
+const barBackground = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        depthTest: false
+    })
+);
+
+const barFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        depthTest: false
+    })
+);
+healthBar.add(barBackground);
+healthBar.add(barFill);
+barBackground.renderOrder = 999;
+barFill.renderOrder = 1000;
+camera.add(healthBar);
+
+function damage() {
+    if (barFill.scale.x > 0.0) {
+        barFill.scale.x -= 0.1;
+        barFill.position.x -= 0.1;
+    }
+}
+function heal() {
+    if (barFill.scale.x < 1.0) {
+        barFill.scale.x += 0.1;
+        barFill.position.x += 0.1;
+    }
+}
+
+//health bar ui element
+const healthBar = new THREE.Group();
+
+const barBackground = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        depthTest: false
+    })
+);
+
+const barFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(2, 0.2),
+    new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        depthTest: false
+    })
+);
+healthBar.add(barBackground);
+healthBar.add(barFill);
+barBackground.renderOrder = 999;
+barFill.renderOrder = 1000;
+camera.add(healthBar);
+
+function damage() {
+    if (barFill.scale.x > 0.0) {
+        barFill.scale.x -= 0.1;
+        barFill.position.x -= 0.1;
+    }
+}
+function heal() {
+    if (barFill.scale.x < 1.0) {
+        barFill.scale.x += 0.1;
+        barFill.position.x += 0.1;
+    }
 }
 
 //This function allows the user to control the spaceship's speed when in first person mode by using the keys 'w' and 's'
@@ -539,6 +621,7 @@ function animateSpaceship() {
     }
     rearViewCamera.position.copy(camera.position);
     rearViewCamera.rotation.copy(camera.rotation);
+    healthBar.position.set(-3.5,-2.5,-10);
     rearViewCamera.rotateY(Math.PI);
     shipBox.setFromObject(ship);
     renderViews();
