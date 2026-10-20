@@ -44,8 +44,10 @@ const starMeshes = [];
 
 const numOfAsteroids = 100; //controls the number of asteroids rendered
 const numOfStars = 100; //controls the number of stars rendered
+
 const clock = new THREE.Clock();
-const deltaTime = clock.getDelta(); // Gets the elapsed time since the clock was last updated
+let animationId;
+
 var driftType = 0;
 var baseScale = 0;
 var growShrinkVariance = 0;
@@ -137,10 +139,6 @@ loader.load(
         const size = shipBox.getSize(new THREE.Vector3());
         const center = shipBox.getCenter(new THREE.Vector3());
         ship.rotation.y = THREE.MathUtils.degToRad(-90);
-
-        console.log("Original ship size:", size);
-        console.log("Original ship center:", center);
-
         // Center the model around its own origin
         ship.position.sub(center);
 
@@ -398,19 +396,19 @@ function renderViews() {
   * "Ok. Here is what I have, the asteroids don't dynamically grow though:", and "Ok, but now it doesn't even seem like the asteroids are moving:".
   */
 //This function animates asteroids according to various drift functions across the z-axis and allows the asteroids to grow and shrink over time
-function animateAsteroids() {
+function animateAsteroids(deltaTime, elapsedTime) {
     for (let i = 0; i < asteroidMeshes.length; i++) {
-        const timeSinceStart = clock.getElapsedTime();
+        const timeSinceStart = elapsedTime;
         const asteroid = asteroidMeshes[i];
 
         if (asteroid) {
          // How far the asteroid has moved along Z
         const distance = asteroid.position.z - asteroid.userData.startZ;
 
-        asteroid.rotation.x += 0.01;
-        asteroid.rotation.y += 0.01;
+        asteroid.rotation.x += 0.6 * deltaTime;
+        asteroid.rotation.y += 0.6 * deltaTime;
 
-        asteroid.position.z += 0.5;
+        asteroid.position.z += 60 * deltaTime;
 
         switch (asteroid.userData.driftType) {
             case 0: // Sinusoidal movement
@@ -462,15 +460,15 @@ function animateAsteroids() {
     const baseScale = 1.0;
     const growShrinkVariance = 0.25;
         for(let i = 0; i < starMeshes.length; i++){
-            const timeSinceStart = clock.getElapsedTime();
+            const timeSinceStart = elapsedTime;
             if(starMeshes[i]){
                 const starMovementAlgo = Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency ) * waveAmplitude; //Controls the movement of the stars
                 const currSinVal = Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency );
                 const currCosineVal = Math.cos(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency );
 
-        starMeshes[i].rotation.x += 0.01;
-        starMeshes[i].rotation.y += 0.01;
-        starMeshes[i].position.z += 0.5;
+        starMeshes[i].rotation.x += 0.6 * deltaTime;
+        starMeshes[i].rotation.y += 0.6 * deltaTime;
+        starMeshes[i].position.z += 60 * deltaTime;
 
     starMeshes[i].position.y = starMeshes[i].userData.startY + Math.sin(timeSinceStart * waveSpeed + starMeshes[i].position.x * waveFrequency) * waveAmplitude;
         
@@ -495,8 +493,6 @@ function animateAsteroids() {
         }
     }
         }
-
-    requestAnimationFrame(animateAsteroids);
 }
 
 let shakeAmount = 0;
@@ -534,8 +530,11 @@ camera.add(healthBar);
 
 function damage() {
     if (barFill.scale.x > 0.0) {
-        barFill.scale.x -= 0.1;
+        barFill.scale.x = Math.max(0, barFill.scale.x - 0.1);
         barFill.position.x -= 0.1;
+    } 
+    if (barFill.scale.x === 0.0) {
+        cancelAnimationFrame(animationId);
     }
 }
 function heal() {
@@ -547,39 +546,40 @@ function heal() {
 
 
 //This function allows the user to control the spaceship's speed when in first person mode by using the keys 'w' and 's'
-function animateSpaceship() {
-    requestAnimationFrame(animateSpaceship);
+function animateSpaceship(deltaTime) {
     if (!ship) return;
     camera.getWorldDirection(direction);
     if(wPressed === true) {
-        if(speed < 1.0) { //maximum forward speed
+        if(speed < 120.0) { //maximum forward speed
             if (speedUp === true) {
-                speed += 0.03;
+                speed += 36.0 * deltaTime;
             } else {
-                speed += 0.001;
+                speed += 12.0 * deltaTime;
             }
         }
     }
+    
     if(sPressed === true) {
-        if(speed > -0.1) { //maximum backward speed
-            speed -= 0.001;
+        if(speed > -120.0) { //maximum backward speed
+            speed -= 12.0 * deltaTime;
+            speed = Math.max(-120.0, speed);
         }
     }
     if(speed < 0.0 && sPressed === false) {
-        speed += 0.01;
+        speed = Math.min(0, speed + 12.0 * deltaTime);
     }
     if(speed > 0.0 && wPressed === false) {
-        speed -= 0.01;
+        speed = Math.max(0, speed - 12.0 * deltaTime);
     }
     ship.rotation.copy(camera.rotation);
     ship.rotateY(THREE.MathUtils.degToRad(-90));
-    ship.position.addScaledVector(direction, speed);
+    ship.position.addScaledVector(direction, speed * deltaTime);
     camera.position.copy(ship.position);
     if (shakeAmount > 0.01) {
         camera.position.x += (Math.random() - 0.5) * shakeAmount;
         camera.position.y += (Math.random() - 0.5) * shakeAmount;
         camera.position.z += (Math.random() - 0.5) * shakeAmount;
-        shakeAmount *= shakeDecay;
+        shakeAmount *= Math.pow(shakeDecay, deltaTime * 60);
     } else {
         shakeAmount = 0;
     }
@@ -588,14 +588,20 @@ function animateSpaceship() {
     healthBar.position.set(-3.5,-2.5,-10);
     rearViewCamera.rotateY(Math.PI);
     shipBox.setFromObject(ship);
-    renderViews();
 }
 createAsteroids();
 createStars();
 
-animateSpaceship();
+function animate() {
+    animationId = requestAnimationFrame(animate);
+    const deltaTime = Math.min(clock.getDelta(), 0.1); // Gets the elapsed time since the clock was last updated
+    const elapsedTime = clock.getElapsedTime(); // Gets the total elapsed time since the clock was started
 
-animateAsteroids();
+    animateSpaceship(deltaTime);
+    animateAsteroids(deltaTime, elapsedTime);
+    renderViews();
+}
+animate();
     </script>
 </body>
 </html>
