@@ -246,7 +246,6 @@ function placeObject(object){
 function shouldReset(object){
     const offset = object.position.clone().sub(camera.position);
     return offset.lengthSq() > 600 * 600;
-//     return object.position.z > camera.position.z + 100
 }
 
 /*
