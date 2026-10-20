@@ -51,7 +51,6 @@ let animationId;
 var driftType = 0;
 var baseScale = 0;
 var growShrinkVariance = 0;
-var scaleSpeed = 0;
 var waveSpeed = 0;
 var waveFrequency = 0;
 var waveAmplitude = 0;
@@ -181,7 +180,10 @@ document.addEventListener("keyup", function(event) {
 });
 
 //Camera Rotation
-let isMouseDown = false;
+/*Used ai to implement pointer lock so that the tab could be left without breaking things during testing
+Also used it to help with the syntax for measuring vertical/horizontal mouse movements for control instead of using an imported library
+-Diana
+*/
 let mouseSensitivity = 0.005;
 let horizontalRotation = 0;   // Rotation left and right
 let VerticalRotation = 0; // Rotation up and down
